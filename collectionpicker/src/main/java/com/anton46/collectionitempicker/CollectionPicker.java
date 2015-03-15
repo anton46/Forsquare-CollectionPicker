@@ -5,6 +5,7 @@ import com.anton46.collectionpicker.R;
 import android.animation.Animator;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.util.AttributeSet;
@@ -20,22 +21,17 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 
 public class CollectionPicker extends LinearLayout {
 
     public static final int LAYOUT_WIDTH_OFFSET = 3;
 
-    private ViewTreeObserver mViewTreeObserver;
     private LayoutInflater mInflater;
 
     private List<Item> mItems = new ArrayList<>();
     private LinearLayout mRow;
-    private HashMap<String, Object> mCheckedItems;
+    private HashMap<String, Object> mCheckedItems = new HashMap<>();
     private OnItemClickListener mClickListener;
     private int mWidth;
     private int mItemMargin = 10;
@@ -67,42 +63,47 @@ public class CollectionPicker extends LinearLayout {
 
         TypedArray typeArray = context
                 .obtainStyledAttributes(attrs, R.styleable.CollectionPicker);
+
         this.mItemMargin = (int) typeArray
                 .getDimension(R.styleable.CollectionPicker_cp_itemMargin,
                         Utils.dpToPx(this.getContext(), mItemMargin));
+
         this.textPaddingLeft = (int) typeArray
                 .getDimension(R.styleable.CollectionPicker_cp_textPaddingLeft,
                         Utils.dpToPx(this.getContext(), textPaddingLeft));
         this.textPaddingRight = (int) typeArray
                 .getDimension(R.styleable.CollectionPicker_cp_textPaddingRight,
-                        Utils.dpToPx(this.getContext(),
-                                textPaddingRight));
+                        Utils.dpToPx(this.getContext(), textPaddingRight));
         this.textPaddingTop = (int) typeArray
                 .getDimension(R.styleable.CollectionPicker_cp_textPaddingTop,
                         Utils.dpToPx(this.getContext(), textPaddingTop));
         this.texPaddingBottom = (int) typeArray
                 .getDimension(R.styleable.CollectionPicker_cp_textPaddingBottom,
-                        Utils.dpToPx(this.getContext(),
-                                texPaddingBottom));
-        this.mAddIcon = typeArray.getResourceId(R.styleable.CollectionPicker_cp_addIcon, mAddIcon);
+                        Utils.dpToPx(this.getContext(), texPaddingBottom));
+
+        this.mAddIcon = typeArray.getResourceId(R.styleable.CollectionPicker_cp_addIcon,
+                mAddIcon);
         this.mCancelIcon = typeArray.getResourceId(R.styleable.CollectionPicker_cp_cancelIcon,
                 mCancelIcon);
+
         this.mLayoutBackgroundColorNormal = typeArray.getColor(
                 R.styleable.CollectionPicker_cp_itemBackgroundNormal,
                 mLayoutBackgroundColorNormal);
         this.mLayoutBackgroundColorPressed = typeArray.getColor(
                 R.styleable.CollectionPicker_cp_itemBackgroundPressed,
                 mLayoutBackgroundColorPressed);
+
         this.mRadius = (int) typeArray
                 .getDimension(R.styleable.CollectionPicker_cp_itemRadius, mRadius);
         this.mTextColor = typeArray
                 .getColor(R.styleable.CollectionPicker_cp_itemTextColor, mTextColor);
+
         typeArray.recycle();
 
         setOrientation(VERTICAL);
         setGravity(Gravity.CENTER_HORIZONTAL);
 
-        mViewTreeObserver = getViewTreeObserver();
+        ViewTreeObserver mViewTreeObserver = getViewTreeObserver();
         mViewTreeObserver.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
             public void onGlobalLayout() {
@@ -137,11 +138,10 @@ public class CollectionPicker extends LinearLayout {
 
         clearUi();
 
-        float totalPadding = getPaddingLeft() + getPaddingRight();
+        float totalHzPadding = getPaddingLeft() + getPaddingRight();
         int indexFrontView = 0;
 
         LayoutParams itemParams = getItemLayoutParams();
-
         for (int i = 0; i < mItems.size(); i++) {
             final Item item = mItems.get(i);
             if (mCheckedItems != null && mCheckedItems.containsKey(item.id)) {
@@ -160,16 +160,11 @@ public class CollectionPicker extends LinearLayout {
                     } else {
                         mCheckedItems.remove(item.id);
                     }
-
-                    if (isJellyBeanAndAbove()) {
-                        itemLayout.setBackground(getSelector(item));
-                    } else {
-                        itemLayout.setBackgroundDrawable(getSelector(item));
-                    }
+                    setBackground(itemLayout, item);
                     ImageView iconView = (ImageView) itemLayout.findViewById(R.id.item_icon);
                     iconView.setBackgroundResource(getItemIcon(item.isSelected));
                     if (mClickListener != null) {
-                        mClickListener.onClick(item, position);
+                        mClickListener.onClick(item, position, item.isSelected);
                     }
                 }
             });
@@ -190,30 +185,25 @@ public class CollectionPicker extends LinearLayout {
             itemWidth += Utils.dpToPx(getContext(), 30) + textPaddingLeft
                     + textPaddingRight;
 
-            if (mWidth <= totalPadding + itemWidth + Utils
+            if (mWidth <= totalHzPadding + itemWidth + Utils
                     .dpToPx(this.getContext(), LAYOUT_WIDTH_OFFSET)) {
-                totalPadding = getPaddingLeft() + getPaddingRight();
+                totalHzPadding = getPaddingLeft() + getPaddingRight();
                 indexFrontView = i;
                 addItemView(itemLayout, itemParams, true, i);
             } else {
                 if (i != indexFrontView) {
                     itemParams.leftMargin = mItemMargin;
-                    totalPadding += mItemMargin;
+                    totalHzPadding += mItemMargin;
                 }
                 addItemView(itemLayout, itemParams, false, i);
             }
-            totalPadding += itemWidth;
+            totalHzPadding += itemWidth;
         }
     }
 
     private View createItemView(Item item) {
         View view = mInflater.inflate(R.layout.item_layout, this, false);
-        if (isJellyBeanAndAbove()) {
-            view.setBackground(getSelector(item));
-        } else {
-            view.setBackgroundDrawable(getSelector(item));
-        }
-
+        setBackground(view, item);
         return view;
     }
 
@@ -235,6 +225,18 @@ public class CollectionPicker extends LinearLayout {
     private void clearUi() {
         removeAllViews();
         mRow = null;
+    }
+
+    public void setBackground(View view, Item item) {
+        setBackground(view, getSelector(item));
+    }
+
+    public void setBackground(View view, Drawable background) {
+        if (isJellyBeanAndAbove()) {
+            view.setBackground(background);
+        } else {
+            view.setBackgroundDrawable(background);
+        }
     }
 
     private void addItemView(View itemView, ViewGroup.LayoutParams chipParams, boolean newLine,

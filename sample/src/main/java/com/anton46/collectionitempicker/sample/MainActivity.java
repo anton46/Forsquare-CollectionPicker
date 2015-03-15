@@ -6,6 +6,7 @@ import com.anton46.collectionitempicker.OnItemClickListener;
 
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -29,8 +30,8 @@ public class MainActivity extends ActionBarActivity {
         mPicker.setItems(generateItems());
         mPicker.setOnItemClickListener(new OnItemClickListener() {
             @Override
-            public void onClick(Item item, int position) {
-                if (item.isSelected) {
+            public void onClick(Item item, int position, boolean isSelected) {
+                if (isSelected) {
                     counter++;
                 } else {
                     counter--;
