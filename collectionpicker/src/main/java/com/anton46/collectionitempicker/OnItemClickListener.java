@@ -5,5 +5,5 @@ package com.anton46.collectionitempicker;
  */
 public interface OnItemClickListener {
 
-    void onClick(Item item, int position);
+    void onClick(Item item, int position, boolean isSelected);
 }
